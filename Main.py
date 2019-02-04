@@ -1,6 +1,5 @@
-from threaded import *
 import socket, sys
-
+from _thread import *
 
 def main():
     print("test")
