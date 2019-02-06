@@ -1,13 +1,17 @@
 import socket, sys, os
 from _thread import *
 
+blockedUrls =[]
+
+blockFileStr = "src/blockedURLS.txt"
+
 def main():
-    f=open("src/blockedURLS.txt","r+")
+    f=open(blockFileStr,"r")
 
-    blockedUrls =[]
     for line in f:
-        blockedUrls = blockedUrls + f
+        blockedUrls.append(line)
 
+    f.close()
 
     while(1):
 
@@ -45,8 +49,26 @@ def start():
 
 
 def display_Options():
-    print("Options go here")
+    print(" 'v' -view or edit url blocklist\n",
+            "'q' -quit\n",
+            "'c' -return\n")
 
+    inp = input()
+
+    if(inp is 'v'):
+        os.system('notepad.exe ' + blockFileStr)
+        f=open(blockFileStr,"r")
+
+        for line in f:
+            blockedUrls.append(line)
+
+        f.close()
+
+    elif(inp is 'q'):
+        exit()
+
+    elif(inp is 'c'):
+        return()
 
 
 if __name__ == '__main__':
