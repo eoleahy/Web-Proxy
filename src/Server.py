@@ -6,6 +6,7 @@ from _thread import *
 
 req_queue = 5
 HOSTNAME = "localhost"
+BUFFER_SIZE = 4096
 
 class Server:
 
@@ -18,20 +19,27 @@ class Server:
         print("[*SERVER]Server is listening at", HOSTNAME , port)
 
         while(1):
-            client_socket,addr = server_socket.accept()
+            connection,addr = server_socket.accept()
+
             print("[*SERVER]Incoming connection from", addr)
-            
 
-    def request_handler(connection, client_addr):
+            start_new_thread(self.request_handler,(connection,addr))
+
+
+    def request_handler(self, connection, client_addr):
+
+        print("[*SERVER]Running handler code")
+
         data = connection.recv(BUFFER_SIZE)
+    #    print("[*SERVER]Incoming message:", data.decode())
 
-        dataStr = data.split('n')[0]
-        url = dataStr.split('   ')[1]
+    #    print('received {!r}'.format(data)  )
+
+        dataStr = data.decode().split('n')[0]
+        url = dataStr.split('   ')[0]
 
         print(dataStr)
         print(url)
-
-
 
         http_position = url.find("://")
 

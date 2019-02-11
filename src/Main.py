@@ -30,8 +30,10 @@ def main():
 
     time.sleep(2)
 
-    while(1):
 
+    while(1):
+        #
+        '''
         inputOp = input("Enter 'a' to set up a connection or 'o' for options or 'q' to quit:\n")
 
         if(inputOp is 'q'):
@@ -41,10 +43,10 @@ def main():
             display_Options()
 
         elif(inputOp is 'a'):
-            start()
+            client_start()
 
-
-def start():
+'''
+def client_start():
 
     port = input("Enter Port (80 is recommended) or type 'q' to return:")
     if(port is 'q'):
@@ -58,20 +60,19 @@ def start():
             sock.bind(sock_addr)
             print("[*CLIENT]Socket created at ", sock_addr)
             sock.connect(server_addr)
-            print("[*CLIENT]Socket created a connected to ", server_addr)
+            print("[*CLIENT]Socket connected to ", server_addr)
 
-    #        while(1):
-    #            start_new_thread(request_handler, (connection,client_addr))
-
+    #        message = b'Initial comm from client'
+    #        sock.sendall(message)
+            while(1):
+                sock.recv(BUFFER_SIZE)
 
             sock.close()
 
         except (OSError, socket.error):
-            print("Port is in use")
+           print("Port is in use")
         except (ValueError, TypeError):
             print("Incorrect")
-
-
 
 def display_Options():
 
