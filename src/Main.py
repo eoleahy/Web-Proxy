@@ -1,10 +1,16 @@
 import socket
 import sys
 import os
+import socketserver
+import time
+from Server import Server
 from _thread import *
 
 
-serverPort = 8001
+
+HOSTNAME = 'localhost'
+server_port = 8001
+server_addr = (HOSTNAME, server_port)
 blockedUrls = set({})
 connSize = 50
 BUFFER_SIZE = 4096
@@ -19,9 +25,14 @@ def main():
 
     f.close()
 
+    start_new_thread(Server,(server_port,))
+    #proxy_server = Server(8001)
+
+    time.sleep(2)
+
     while(1):
 
-        inputOp = input("Enter 'a' to set up a connection or 'o' for options or 'q' to quit:")
+        inputOp = input("Enter 'a' to set up a connection or 'o' for options or 'q' to quit:\n")
 
         if(inputOp is 'q'):
             exit()
@@ -35,7 +46,6 @@ def main():
 
 def start():
 
-    HOSTNAME = 'localhost'
     port = input("Enter Port (80 is recommended) or type 'q' to return:")
     if(port is 'q'):
         return
@@ -44,18 +54,15 @@ def start():
         try:
             port = int(port)
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.bind((HOSTNAME, port))
-            print("[*]Socket created...")
+            sock_addr = (HOSTNAME,port)
+            sock.bind(sock_addr)
+            print("[*CLIENT]Socket created at ", sock_addr)
+            sock.connect(server_addr)
+            print("[*CLIENT]Socket created a connected to ", server_addr)
 
-            sock.listen(connSize)
-            print("[*]Socket listening on [" +
-                  HOSTNAME + ":" + str(port) + ']...')
+    #        while(1):
+    #            start_new_thread(request_handler, (connection,client_addr))
 
-
-            while(1):
-                print("here")
-                (connection,client_addr) = sock.accept()
-                _thread.start_new_thread(request_handler, (connection,client_addr))
 
             sock.close()
 
@@ -63,56 +70,6 @@ def start():
             print("Port is in use")
         except (ValueError, TypeError):
             print("Incorrect")
-
-def request_handler(connection, client_addr):
-    print("here")
-    data = connection.recv(BUFFER_SIZE)
-
-    dataStr = data.split('n')[0]
-    url = dataStr.split('   ')[1]
-
-    print(dataStr)
-    print(url)
-
-
-
-    http_position = url.find("://")
-
-    if(http_position is -1):
-        temp = url
-
-    else:
-        temp = url[(http_position+3):]
-
-    port_position = temp.find(":")
-
-    webserver_position = temp.find("/")
-
-    if(webserver_position is -1):
-        webserver_position=len(temp)
-
-    webserver = ""
-    port = -1
-
-
-    if(port is -1 or webserver_position < port_position ):
-
-        port = 443
-        webserver = temp[:webserver_position]
-
-    else:
-        port = int((temp[(port_position+1):])[:webserver_position-1])
-        webserver = temp[:port_position]
-
-
-    sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-
-    sock.connect((webserver,port))
-    sock.sendall(data)
-
-    data = sock.recv(BUFFER_SIZE)
-
-    connection.send(data)
 
 
 
