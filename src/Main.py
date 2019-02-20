@@ -8,11 +8,10 @@ from _thread import *
 
 
 
-HOSTNAME = 'localhost'
+HOSTNAME = "127.0.0.1"
 server_port = 8001
-server_addr = (HOSTNAME, server_port)
 blockedUrls = set({})
-connSize = 50
+conn_size = 5
 BUFFER_SIZE = 4096
 blockFileStr = "src/blocklist.txt"
 
@@ -25,16 +24,25 @@ def main():
 
     f.close()
 
-    start_new_thread(Server,(server_port,))
-    #proxy_server = Server(8001)
+    inputOp = input("[*CONSOLE]Enter 's' to start proxy or 'o' for options or 'q' to quit:")
+
+    if inputOp is "s":
+        start_new_thread(Server,(HOSTNAME, server_port,conn_size))
+
+    elif(inputOp is 'o'):
+        display_Options()
+
+    elif(inputOp is 'q'):
+        exit()
+
 
     time.sleep(2)
 
 
     while(1):
         #
-        '''
-        inputOp = input("Enter 'a' to set up a connection or 'o' for options or 'q' to quit:\n")
+
+        inputOp = input("[*CONSOLE]Enter 'o' for options or 'q' to quit:")
 
         if(inputOp is 'q'):
             exit()
@@ -42,37 +50,6 @@ def main():
         elif(inputOp is 'o'):
             display_Options()
 
-        elif(inputOp is 'a'):
-            client_start()
-
-'''
-def client_start():
-
-    port = input("Enter Port (80 is recommended) or type 'q' to return:")
-    if(port is 'q'):
-        return
-
-    else:
-        try:
-            port = int(port)
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock_addr = (HOSTNAME,port)
-            sock.bind(sock_addr)
-            print("[*CLIENT]Socket created at ", sock_addr)
-            sock.connect(server_addr)
-            print("[*CLIENT]Socket connected to ", server_addr)
-
-    #        message = b'Initial comm from client'
-    #        sock.sendall(message)
-            while(1):
-                sock.recv(BUFFER_SIZE)
-
-            sock.close()
-
-        except (OSError, socket.error):
-           print("Port is in use")
-        except (ValueError, TypeError):
-            print("Incorrect")
 
 def display_Options():
 
@@ -81,7 +58,7 @@ def display_Options():
               "'q' -quit\n",
               "'c' -return\n")
 
-        inp = input("Type command:")
+        inp = input("[*CONSOLE]Type command:")
 
         # Opens file in text editor
         if(inp is 'v'):
@@ -101,7 +78,6 @@ def display_Options():
 
         elif(inp is 'c'):
             return
-
 
 if __name__ == '__main__':
     main()

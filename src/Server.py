@@ -2,79 +2,66 @@ import socket
 import sys
 import os
 import socketserver
+import requests
 from _thread import *
 
-req_queue = 5
-HOSTNAME = "localhost"
+req_queue = 1
 BUFFER_SIZE = 4096
 
 class Server:
 
-    def __init__(self,port):
+    def __init__(self,HOSTNAME,port,connection_queue):
         self.port = port
         server_socket=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server_socket.bind((HOSTNAME,port))
-        server_socket.listen(5)
+        server_socket.listen(connection_queue)
 
-        print("[*SERVER]Server is listening at", HOSTNAME , port)
+        print("[*SERVER]Server is listening at", HOSTNAME +":"+ str(port),"\n")
+
 
         while(1):
-            connection,addr = server_socket.accept()
+            client_connection,client_addr = server_socket.accept()
+            print('\n[*SERVER]Incoming connection from ' + client_addr[0] + ':' + str(client_addr[1]))
+        #    start_new_thread(self.request_handler,(client_connection,client_addr))
+            self.request_handler(client_connection,client_addr)
 
-            print("[*SERVER]Incoming connection from", addr)
+        server_socket.close()
 
-            start_new_thread(self.request_handler,(connection,addr))
-
-
-    def request_handler(self, connection, client_addr):
+    def request_handler(self, connection, addr):
 
         print("[*SERVER]Running handler code")
 
         data = connection.recv(BUFFER_SIZE)
-    #    print("[*SERVER]Incoming message:", data.decode())
+        dataStr = data.decode()
+        print("[*SERVER]Incoming message:\n", dataStr)
 
-    #    print('received {!r}'.format(data)  )
+        dataParts = dataStr.splitlines()
 
-        dataStr = data.decode().split('n')[0]
-        url = dataStr.split('   ')[0]
-
-        print(dataStr)
-        print(url)
-
-        http_position = url.find("://")
-
-        if(http_position is -1):
-            temp = url
-
-        else:
-            temp = url[(http_position+3):]
-
-        port_position = temp.find(":")
-
-        webserver_position = temp.find("/")
-
-        if(webserver_position is -1):
-            webserver_position=len(temp)
-
-        webserver = ""
-        port = -1
+        temp = dataParts[0]
+        URL = temp[temp.find("http://")+7:temp.find("/ HTTP")]
+        print("URL is", URL)
+#        remote_host = dataStr[dataStr.find("Host: "):]
+#        remote_host = remote_host[remote_host.find("www.")+4:remote_host.find("\n")]
+#        print("host is:"+remote_host)
 
 
-        if(port is -1 or webserver_position < port_position ):
+        remote_port=80
+    #    remote_port = temp[temp.find(":")+1:temp.find(" HTTP")]
+    #    print("port is",remote_port)
 
-            port = 443
-            webserver = temp[:webserver_position]
+        s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+        s.connect((URL,int(remote_port)))
+        s.sendall(data)
 
-        else:
-            port = int((temp[(port_position+1):])[:webserver_position-1])
-            webserver = temp[:port_position]
+        while(1):
+            web_data = s.recv(4096)
+    #        print("[*SERVER]Response from web: ",web_data.decode())
+            #Send to client
+            if(len(web_data) > 0):
+                connection.send(web_data)
+            else:
+                break
 
-
-        sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-
-        sock.connect((webserver,port))
-        sock.sendall(data)
-
-        data = sock.recv(BUFFER_SIZE)
-
-        connection.send(data)
+        s.close()
+    #    print("Host     :", incomingHost)
+    #    connection.send(dataStr.encode())
