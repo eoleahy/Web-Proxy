@@ -1,3 +1,3 @@
 #!/bin/sh
 clear
-python src/Main.py
+python src/Console.py

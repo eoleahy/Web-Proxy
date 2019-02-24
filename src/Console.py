@@ -8,11 +8,8 @@ from _thread import *
 
 
 
-HOSTNAME = "127.0.0.1"
 server_port = 8001
 blockedUrls = set({})
-conn_size = 5
-BUFFER_SIZE = 4096
 blockFileStr = "src/blocklist.txt"
 
 
@@ -24,16 +21,18 @@ def main():
 
     f.close()
 
-    inputOp = input("[*CONSOLE]Enter 's' to start proxy or 'o' for options or 'q' to quit:")
+    while(1):
+        inputOp = input("[*CONSOLE]Enter 's' to start proxy or 'o' for options or 'q' to quit:")
 
-    if inputOp is "s":
-        start_new_thread(Server,(HOSTNAME, server_port,conn_size))
+        if inputOp is "s":
+            start_new_thread(Server,(server_port,))
+            break
 
-    elif(inputOp is 'o'):
-        display_Options()
+        elif(inputOp is 'o'):
+            display_Options()
 
-    elif(inputOp is 'q'):
-        exit()
+        elif(inputOp is 'q'):
+            exit()
 
 
     time.sleep(2)
@@ -51,6 +50,20 @@ def main():
             display_Options()
 
 
+def editBlockList():
+    # Opens file in text editor
+    print("[*CONSOLE]Opening text editor...")
+    os.system('notepad.exe ' + blockFileStr)
+    f = open(blockFileStr, "r")
+
+    # Clear url set and read as file is updated
+    blockedUrls.clear()
+
+    for line in f:
+        blockedUrls.add(line)
+
+    f.close()
+
 def display_Options():
 
     while(1):
@@ -60,18 +73,8 @@ def display_Options():
 
         inp = input("[*CONSOLE]Type command:")
 
-        # Opens file in text editor
         if(inp is 'v'):
-            os.system('notepad.exe ' + blockFileStr)
-            f = open(blockFileStr, "r")
-
-            # Clear url set and readd as file is updated
-            blockedUrls.clear()
-
-            for line in f:
-                blockedUrls.add(line)
-
-            f.close()
+            editBlockList()
 
         elif(inp is 'q'):
             exit()
