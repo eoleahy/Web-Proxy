@@ -1,146 +1,172 @@
-import socket
-import sys
 import os
-import requests
+import sys
+import socket
 import ssl
 from _thread import *
 
-
-BUFFER_SIZE = 8192000
-
+BUFFER_SIZE = 819200
 
 class Server:
 
     HOSTNAME = "127.0.0.1"
+    connection_queue = 100
+    blocklist=""
 
-    def __init__(self,port):
-        connection_queue = 1000
+    def __init__(self,port,blockFileStr):
 
-        self.port = port
-        server=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_addr =(Server.HOSTNAME,int(port))
+        Server.blocklist=blockFileStr
+
+        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server_addr=(Server.HOSTNAME,port)
         server.bind(server_addr)
-        server.listen(connection_queue)
 
+        print("[*SERVER]Proxy is initialised and listening at",server_addr)
+        server.listen(Server.connection_queue)
 
-        print("[*SERVER] Server is initialised and listening at",server_addr)
-
+        #Listening loop for server
         while 1:
-            incoming_connection, incoming_addr = server.accept()
-        #    print("\n[*SERVER]Incoming request from",incoming_addr,"\n")
-            data = incoming_connection.recv(BUFFER_SIZE)
-            start_new_thread(self.string_extract,(incoming_connection,incoming_addr,data))
-    #        self.string_extract(incoming_connection,incoming_addr,data.decode())
 
-        s.close()
+            # Establish the connection
+            (connection, client_addr) = server.accept()
+        #    print("[*Server]Incoming connection from",client_addr,"\n")
+            start_new_thread(self.https_proxy, (connection, client_addr))
 
-    def string_extract(self, connection, client_addr,data):
+    def https_proxy(self,client_connection, client_addr):
 
-        data=data.decode()
-    #    print(data)
-    #    try:
-        data_lines = data.split('\n')
-        if("CONNECT" in data):
-            print("\n", data)
+        data = client_connection.recv(BUFFER_SIZE)
 
-            first_line = data_lines[0]
-            url = first_line.split(' ')[1]
-
-            host = url.split(':')[0]
-            port = url.split(':')[1]
-            print("url" ,url)
-
-            self.https_proxy(data.encode(),connection,host,int(port))
-        #    connection.close()
-            return
-        else:
-            print(data)
-            first_line = data_lines[0]
-
-
-            url = first_line.split(' ')[1]
-            #    print("url",url)
-
-            http_position = url.find("://")
-
-            if(http_position == -1):
-                temp=url
-            else:
-                temp=url[(http_position+3):]
-
-
-            port_pos = temp.find(":")
-            webserver_pos =temp.find("/")
-
-
-
-            if(webserver_pos == -1):
-                webserver_pos=len(temp)
-
-
-            webserver=""
-            port = -1
-
-            if(port_pos == -1 or webserver_pos < port_pos):
-                port=80
-                webserver=temp[:webserver_pos]
-            else:
-                port = int((temp[(port_pos+1):])[:webserver_pos-port_pos+1])
-                webserver = temp[:port_pos]
-
-
-            self.http_handler(webserver,port,connection,data,client_addr)
-    #    except Exception as e:
-    #        print(e)
-    #        pass
-
-    def http_handler(self,remote_webserver,remote_port,client_connection,data,client_addr):
-
+        #byte -> string
         try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect((remote_webserver,remote_port))
-            sock.send(data.encode())
-
-            while 1:
-                response = sock.recv(BUFFER_SIZE)
-                print("[*SERVER] Response from remote:")#, response)
-
-                if(len(response) > 0):
-                    client_connection.send(response)
-                else:
-                    break
-
-            sock.close()
-
-            client_connection.close()
-
-        except socket.error:
-            sock.close()
-            client_connection.close()
-
-    def https_proxy(self,data,client_connection, remote_webserver, remote_port):
-
-        try:
-        #    client_connection.send(data)
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect((remote_webserver,remote_port))
-            #client_connection.sendall(data.encode())
-
-            reply = "HTTP/1.0 200 Connection establish\r\n"
-            reply+= "Proxy-agent: Pyx\r\n"
-            reply+= "\r\n"
-            client_connection.sendall( reply.encode() )
-        except sock.error as err:
+            data = data.decode("utf-8")
+        except UnicodeDecodeError:
             pass
 
-    #    sock.setblocking(0)
-    #    client_connection.setblocking(0)
+        #print(data)
+
+        #This is the line that typically has the CONNECT www.website.com:443
+        first_line=""
+
+        try:
+            first_line = data.split("\n")[0]
+
+        except TypeError:
+            pass
+
+        # get details
+        url =""
+
+        try:
+            url = first_line.split(" ")[1]
+        except IndexError:
+            pass
+
+        webserver = ""
+        port = ""
+
+        reqType = first_line.split(" ")[0]
+
+        #Finding web details for HTTP CONNECT
+        if(reqType is "CONNECT"):
+
+            webserver = url.split(':')[0]
+            port = url.split(':')[1]
+
+
+        #For other types of requests (GET/POST)
+        else:
+
+            http_pos = url.find("://") # find pos of ://
+
+            if(http_pos==-1):
+                temp = url
+            else:
+                temp = url[(http_pos+3):] # get the rest of url
+
+            port_pos = temp.find(":") # find the port pos (if any)
+
+
+            # find end of web server
+            webserver_pos = temp.find("/")
+            if(webserver_pos == -1):
+                webserver_pos = len(temp)
+
+            webserver = "localhost"
+            port = -1
+            if(port_pos==-1 or webserver_pos < port_pos):
+
+                # default port
+                port = 80
+                webserver = temp[:webserver_pos]
+
+            else: # specific port
+                port = int((temp[(port_pos+1):])[:webserver_pos-port_pos-1])
+                webserver = temp[:port_pos]
+
+        if(self.checkBlockList(webserver) is 1):
+            client_connection.close()
+            return
+
+        if(reqType is not ""):
+            print("[*SERVER] REQUEST:[",reqType,webserver,"]")
+
+
+        #--- The below code is for the communication from client to proxy to browser ---
+
+        #Create a socket for connecting to web
+        try:
+            remote_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            remote_socket.connect((webserver, port))
+        except OSError:
+            pass
+
+        if(reqType == "CONNECT"):
+            #HTTP CONNECT reply
+            reply = "HTTP/1.0 200 Connection established\r\n"
+            reply += "Proxy-agent: Pyx\r\n"
+            reply += "\r\n"
+            client_connection.sendall( reply.encode() )
+
+        elif(reqType == 'GET'):
+            #we can just send off the data from client for GET
+            remote_socket.sendall(data.encode())
+
+        #Set up an I0 stream
+        try:
+            client_connection.setblocking(0)
+            remote_socket.setblocking(0)
+        except OSError:
+            pass
+
+        #Two way communication streams
         while 1:
-            request = client_connection.recv(BUFFER_SIZE)
-            print("Request:")#, request)
-            sock.sendall(request)
+            #client -> proxy -> web
+            try:
+                request_from_client = client_connection.recv(BUFFER_SIZE)
+                remote_socket.sendall( request_from_client )
+            except socket.error as err:
+                pass
+            #web -> proxy -> client
+            try:
+                reply_from_web = remote_socket.recv(BUFFER_SIZE)
+                client_connection.sendall( reply_from_web )
+            except socket.error as err:
+                pass
 
+    def checkBlockList(self,host):
 
-            reply = sock.recv(BUFFER_SIZE)
-            print("Reply:")#, reply)
-            client_connection.sendall( reply )
+        f = open(Server.blocklist, "r")
+    #    print("HOST:",host)
+        if(len(host)<=1):
+            f.close()
+            return 0
+        for line in f:
+            #print("line:",line)
+            #print("HOST: %s LINE: %s" % (host, line))
+            if(host in line):
+                print("[*SERVER] Attempted access to banned url:",line)
+                f.close()
+                return 1
+
+        f.close()
+        return 0
