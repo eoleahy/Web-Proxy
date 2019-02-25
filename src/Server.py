@@ -129,8 +129,10 @@ class Server:
 
         elif(reqType == 'GET'):
             #we can just send off the data from client for GET
-            remote_socket.sendall(data.encode())
-
+            try:
+                remote_socket.sendall(data.encode())
+            except OSError:
+                pass
         #Set up an I0 stream
         try:
             client_connection.setblocking(0)
@@ -149,6 +151,7 @@ class Server:
             #web -> proxy -> client
             try:
                 reply_from_web = remote_socket.recv(BUFFER_SIZE)
+                print(reply_from_web)
                 client_connection.sendall( reply_from_web )
             except socket.error as err:
                 pass
