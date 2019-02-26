@@ -115,6 +115,12 @@ class Server:
     def https_proxy(self,reqType,webserver,port,client_connection,client_addr,data):
         #--- The below code is for the communication from client to proxy to browser ---
 
+            from_cache = False
+            cached_data = self.fetch_cache(webserver)
+            if(cached_data is not None):
+                client_connection.sendall( cached_data.encode() )
+                from_cache=True
+                return
             #Create a socket for connecting to web
             try:
                 remote_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -154,6 +160,7 @@ class Server:
                     #web -> proxy -> client
                 try:
                     reply_from_web = remote_socket.recv(BUFFER_SIZE)
+                    self.add_to_cache(webserver,reply_from_web)
                     #    print(reply_from_web)
                     client_connection.sendall( reply_from_web )
                 except socket.error as err:
@@ -185,6 +192,8 @@ class Server:
             Server.server_cache[host]+=data
         else:
             Server.server_cache[host]=data
+
+        print("[*SERVER]Data added to cache")
 
 
     def fetch_cache(self,host):
