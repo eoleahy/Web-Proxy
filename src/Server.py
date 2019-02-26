@@ -11,6 +11,7 @@ class Server:
     HOSTNAME = "127.0.0.1"
     connection_queue = 100
     blocklist=""
+    server_cache={"":""}
 
     def __init__(self,port,blockFileStr):
 
@@ -175,3 +176,21 @@ class Server:
 
         f.close()
         return 0
+
+    def add_to_cache(self,host,data):
+
+        if(host in Server.server_cache):
+            temp = Server.server_cache.get(host)
+            temp+=data
+            Server.server_cache[host]+=data
+        else:
+            Server.server_cache[host]=data
+
+
+    def fetch_cache(self,host):
+        if host in Server.server_cache:
+            print("fetched from cache")
+            return Server.server_cache.get(host)
+
+        else:
+            return None
