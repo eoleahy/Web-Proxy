@@ -11,7 +11,6 @@ class Server:
     HOSTNAME = "127.0.0.1"
     connection_queue = 100
     blocklist=""
-    server_cache={"":""}
 
     def __init__(self,port,blockFileStr):
 

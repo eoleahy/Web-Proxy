@@ -7,10 +7,7 @@ from Server import Server
 from threading import Timer
 from _thread import *
 
-
-
 server_port = 8081
-blockedUrls = set({})
 blockFileStr = "src/blocklist.txt"
 
 
