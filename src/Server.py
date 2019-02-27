@@ -7,13 +7,20 @@ from _thread import *
 BUFFER_SIZE = 819200
 
 class Server:
-
+    """Main class that implements the actual proxy"""
     HOSTNAME = "127.0.0.1"
     connection_queue = 100
     blocklist=""
 
     def __init__(self,port,blockFileStr):
+        """
+        Constructor for the server. Creates the server socket and starts
+        listening for incoming connections. Creates a new thread for incoming
+        connections.
 
+        @param port: Integer of the port the server is listening atself.
+        @param blockFileStr: a string for the address of the blocklist
+        """
         Server.blocklist=blockFileStr
 
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -27,99 +34,104 @@ class Server:
         #Listening loop for server
         while 1:
 
-            # Establish the connection
+            #Accept the incoming connection
             (connection, client_addr) = server.accept()
         #    print("[*Server]Incoming connection from",client_addr,"\n")
             start_new_thread(self.request_handler, (connection, client_addr))
 
     def request_handler(self,connection, client_addr):
+        """
+        Parses the details of the incoming connection. Finds the host and port
+        of the website the client is trying to connect to.
+
+        @param connection: the connection to the client
+        @param client_addr: address of the client
+        """
 
         data = connection.recv(BUFFER_SIZE)
 
         #byte -> string
         try:
             data = data.decode("utf-8")
+            #print(data)
+
+            #This is the line that typically has the CONNECT www.website.com:443
+            first_line = data.split("\n")[0]
+            url = first_line.split(" ")[1]
+            webserver = ""
+            remote_port = ""
+            reqType = first_line.split(" ")[0]
+
+            #Finding web details for HTTP CONNECT
+            if(reqType is "CONNECT"):
+                webserver = url.split(':')[0]
+                remote_port = url.split(':')[1]
+            #For other types of requests (GET/POST)
+            else:
+
+                http_pos = url.find("://") # find pos of ://
+
+                if(http_pos==-1):
+                    temp = url
+                else:
+                    temp = url[(http_pos+3):] # get the rest of url
+
+                # find the port pos (if any)
+                port_pos = temp.find(":")
+                # find end of web server
+                webserver_pos = temp.find("/")
+                if(webserver_pos == -1):
+                    webserver_pos = len(temp)
+
+                remote_port = -1
+                #if it has no specified port default to 80
+                if(port_pos==-1 or webserver_pos < port_pos):
+                    remote_port = 80
+                    webserver = temp[:webserver_pos]
+
+                else: # specific port
+                    remote_port = int((temp[(port_pos+1):])[:webserver_pos-port_pos-1])
+                    webserver = temp[:port_pos]
+
+            # check the blocklist for the host
+            if(self.checkBlockList(webserver) is 1):
+                connection.close()
+                return
+
+            if(reqType is not ""):
+                print("[*SERVER] REQUEST:[",reqType,webserver,"]")
+
+            self.https_proxy(reqType,webserver,remote_port,connection,data)
+
+        except OSError:
+            pass
+        except TypeError:
+            pass
+        except IndexError:
+            pass
         except UnicodeDecodeError:
             pass
 
-        #print(data)
+    def https_proxy(self,reqType,webserver,port,client_connection,data):
+        """
+        Main functionality of the proxy, opens up a socket to connect to webserver.
+        If the connection type is CONNECT it will send the 200 code and set up a
+        connection between the client and webserver.
+        It then opens an unblocked stream from webserver to proxy to client &
+        vice-versa.
+        @param reqType: Type of request
+        @param webserver: Host of the webserver
+        @param port: Port of the webserver
+        @param client_connection: Connection to client
+        @param data: data from client
+        """
 
-        #This is the line that typically has the CONNECT www.website.com:443
-        first_line=""
-
-        try:
-            first_line = data.split("\n")[0]
-
-        except TypeError:
-            pass
-
-        # get details
-        url =""
-
-        try:
-            url = first_line.split(" ")[1]
-        except IndexError:
-            pass
-
-        webserver = ""
-        remote_port = ""
-
-        reqType = first_line.split(" ")[0]
-
-        #Finding web details for HTTP CONNECT
-        if(reqType is "CONNECT"):
-
-            webserver = url.split(':')[0]
-            remote_port = url.split(':')[1]
-
-
-        #For other types of requests (GET/POST)
-        else:
-
-            http_pos = url.find("://") # find pos of ://
-
-            if(http_pos==-1):
-                temp = url
-            else:
-                temp = url[(http_pos+3):] # get the rest of url
-
-            port_pos = temp.find(":") # find the port pos (if any)
-
-
-            # find end of web server
-            webserver_pos = temp.find("/")
-            if(webserver_pos == -1):
-                webserver_pos = len(temp)
-
-            reomte_port = -1
-            if(port_pos==-1 or webserver_pos < port_pos):
-                remote_port = 80
-                webserver = temp[:webserver_pos]
-
-            else: # specific port
-                remote_port = int((temp[(port_pos+1):])[:webserver_pos-port_pos-1])
-                webserver = temp[:port_pos]
-
-        if(self.checkBlockList(webserver) is 1):
-            connection.close()
-            return
-
-        if(reqType is not ""):
-            print("[*SERVER] REQUEST:[",reqType,webserver,"]")
-
-
-
-        self.https_proxy(reqType,webserver,remote_port,connection,client_addr,data)
-
-    def https_proxy(self,reqType,webserver,port,client_connection,client_addr,data):
         #--- The below code is for the communication from client to proxy to browser ---
 
-            #Create a socket for connecting to web
-            try:
-                remote_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                remote_socket.connect((webserver, int(port)))
-            except OSError:
-                pass
+        #Create a socket for connecting to web
+        try:
+            remote_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            remote_socket.connect((webserver, int(port)))
 
             if(reqType == "CONNECT"):
                 #HTTP CONNECT reply
@@ -130,19 +142,13 @@ class Server:
 
             elif(reqType == 'GET'):
                 #we can just send off the data from client for GET
-                try:
-                    remote_socket.sendall(data.encode())
-                except OSError:
-                    pass
+                remote_socket.sendall(data.encode())
 
-            #Set up an I0 stream
-            try:
-                client_connection.setblocking(0)
-                remote_socket.setblocking(0)
-            except OSError:
-                pass
+            #No blocking on socket to prevent hanging state
+            client_connection.setblocking(False)
+            remote_socket.setblocking(False)
 
-                #Two way communication streams
+            #Two way communication streams
             while 1:
                 #client -> proxy -> web
                 try:
@@ -153,21 +159,26 @@ class Server:
                     #web -> proxy -> client
                 try:
                     reply_from_web = remote_socket.recv(BUFFER_SIZE)
-                    #    print(reply_from_web)
                     client_connection.sendall( reply_from_web )
                 except socket.error as err:
                     pass
-
+        except OSError:
+            pass
     def checkBlockList(self,host):
+        """
+        Checks to see if website trying to connect to in in the blocklist.
+        Reads in from blocklist file. Must be in the form www.website.com.
 
+        @param host: Host of the site proxy is trying to connect to.
+        @returns: 1 if host is blocked
+                  0 if host is unblocked
+        """
         f = open(Server.blocklist, "r")
-    #    print("HOST:",host)
+
         if(len(host)<=1):
             f.close()
             return 0
         for line in f:
-            #print("line:",line)
-            #print("HOST: %s LINE: %s" % (host, line))
             if(host in line):
                 print("[*SERVER] Attempted access to banned url:",line)
                 f.close()

@@ -17,7 +17,7 @@ def main():
     while(1):
         inputOp = input("[*CONSOLE]Enter 's' to start proxy at %d ,'o' for options ,'p' to change port, 'q' to quit:" % ( port ))
 
-        if inputOp is "s":
+        if inputOp is "s": # Create new thread the server runs on
             start_new_thread(Server,(port,blockFileStr))
             break
 
@@ -42,12 +42,12 @@ def main():
 
 
 def edit_blocklist():
-    # Opens file in text editor
+    """Opens the blockfile list in default text editor"""
     print("[*CONSOLE]Opening text editor...")
     os.system('notepad.exe ' + blockFileStr)
 
 def display_Options():
-
+    """Handles IO for Console options"""
     while(1):
         print(" 'v' -view or edit url blocklist\n",
               "'q' -quit\n",
