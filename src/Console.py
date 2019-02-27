@@ -8,21 +8,23 @@ from threading import Timer
 from _thread import *
 
 server_port = 8081
-blockFileStr = "src/blocklist.txt"
+blockFileStr = "blocklist.txt"
 
 
 def main():
+    f=open(blockFileStr,"w+")
+    f.close()
     port = server_port
 
     while(1):
-        inputOp = input("[*CONSOLE]Enter 's' to start proxy at %d ,'o' for options ,'p' to change port, 'q' to quit:" % ( port ))
+        inputOp = input("[*CONSOLE]Enter 's' to start proxy at %d ,'v' to edit blocklist ,'p' to change port, 'q' to quit:" % ( port ))
 
         if inputOp is "s": # Create new thread the server runs on
             start_new_thread(Server,(port,blockFileStr))
             break
 
-        elif(inputOp is 'o'):
-            display_Options()
+        elif(inputOp is 'v'):
+            edit_blocklist()
 
         elif(inputOp is 'p'):
             port=int(input("Enter new port:"))
@@ -45,24 +47,6 @@ def edit_blocklist():
     """Opens the blockfile list in default text editor"""
     print("[*CONSOLE]Opening text editor...")
     os.system('notepad.exe ' + blockFileStr)
-
-def display_Options():
-    """Handles IO for Console options"""
-    while(1):
-        print(" 'v' -view or edit url blocklist\n",
-              "'q' -quit\n",
-              "'c' -return\n")
-
-        inp = input("[*CONSOLE]Type command:")
-
-        if(inp is 'v'):
-            edit_blocklist()
-
-        elif(inp is 'q'):
-            exit()
-
-        elif(inp is 'c'):
-            return
 
 if __name__ == '__main__':
     main()
