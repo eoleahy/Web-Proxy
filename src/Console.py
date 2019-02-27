@@ -34,13 +34,13 @@ def main():
 
     while(1):
         time.sleep(1)
-        inputOp = input("[*CONSOLE]Enter 'o' for options or 'q' to quit:")
+        inputOp = input("[*CONSOLE]Enter 'v' to edit blocklist or 'q' to quit:")
 
         if(inputOp is 'q'):
             exit()
 
-        elif(inputOp is 'o'):
-            display_Options()
+        elif(inputOp is 'v'):
+            edit_blocklist()
 
 
 def edit_blocklist():
