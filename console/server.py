@@ -63,7 +63,7 @@ class Server:
             reqType = first_line.split(" ")[0]
 
             #Finding web details for HTTP CONNECT
-            if(reqType is "CONNECT"):
+            if(reqType == "CONNECT"):
                 webserver = url.split(':')[0]
                 remote_port = url.split(':')[1]
             #For other types of requests (GET/POST)
@@ -94,11 +94,11 @@ class Server:
                     webserver = temp[:port_pos]
 
             # check the blocklist for the host
-            if(self.checkBlockList(webserver) is 1):
+            if(self.checkBlockList(webserver) == 1):
                 connection.close()
                 return
 
-            if(reqType is not ""):
+            if(reqType != ""):
                 print("[*SERVER] REQUEST:[",reqType,webserver,"]")
 
             self.https_proxy(reqType,webserver,remote_port,connection,data)
